@@ -1,0 +1,56 @@
+name: Scan dependencies
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+env:
+  MEND_URL: ${{ secrets.MEND_URL }}
+  MEND_ORGANIZATION: ${{ secrets.MEND_ORGANIZATION }}
+  MEND_ORGANIZATION_KEY: ${{ secrets.MEND_ORGANIZATION_KEY }}
+  MEND_USER_KEY: ${{ secrets.MEND_USER_KEY }}
+  MEND_EMAIL: ${{ secrets.MEND_EMAIL }}
+
+permissions:
+  actions: write
+  contents: read
+  security-events: write
+
+jobs:
+  test-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          cache: 'maven'
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Set up Mend CLI
+        uses: carlspring/mend-actions/setup@feat/scan-dependencies
+
+      - name: Login into Mend.io
+        uses: carlspring/mend-actions/login@feat/scan-dependencies
+
+      - name: Perform scan
+        uses: carlspring/mend-actions/scan-dependencies@feat/scan-dependencies
+        with:
+          scope: "*//CTNR - FORME/mend-actions-maven-example"
+
+      - name: Upload SARIF report
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+
